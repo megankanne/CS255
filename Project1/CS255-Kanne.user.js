@@ -1,7 +1,7 @@
 //==UserScript==
 // @namespace      CS255-Kanne
 // @name           CS255-Kanne
-// @description    CS255-Kanne - CS255 Assignment 1
+// @description    CS255-Kanne - CS255 Assignment 1  
 // @version        1.5
 
 
@@ -49,6 +49,10 @@ function Encrypt(plainText, group) {
 
 }
 
+function GetIV(cipherText){
+	//stuff here depending on how Hung implemented
+}
+
 // Return the decryption of the message for the given group, in the form of a string.
 // Throws an error in case the string is not properly encrypted.
 //
@@ -56,17 +60,43 @@ function Encrypt(plainText, group) {
 // @param {String} group Group name.
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
+  //Thow error if not properly encrypted  
+	  
+  //get key for group from table
+  LoadKeys();  
+  if(keys[group] == undefined) { 
+	alert("key not found");
+	return cipherText; 
+  }
+  var key = keys[group];
+  console.log(key);
+  //var IV = GetIV(cipherText); 
+  //console.log(IV);
+  var CT = sjcl.codec.base64.toBits(cipherText);
+  var len = sjcl.bitArray.bitLength(CT);
+  console.log(len);
+  var cipher = new sjcl.cipher.aes(key);
 
-  // CS255-todo: implement decryption on encrypted messages
-
-  if (cipherText.indexOf('rot13:') == 0) {
-
-    // decrypt, ignore the tag.
-    var decryptedMsg = rot13(cipherText.slice(6));
-    return decryptedMsg;
-
-  } else {
-    throw "not encrypted";
+  //starting from end of CT, take 128bits
+  for(var i=len; i>0; i-128){
+    /* @param {bitArray a} The array to slice.
+	* @param {Number} bstart The offset to the start of the slice, in bits.
+	* @param {Number} bend The offset to the end of the slice, in bits.  If this is undefined,
+	* slice until the end of the array.
+	* @return {bitArray} The requested slice.
+    */
+	var slice = sjcl.bitArray.bitSlice(CT, i-128, i);
+    //apply decryption using (key)
+    var outtext = cipher.decrypt(slice);
+    if(i == len){
+	  //xor the result and the IV
+      outtext = sjcl.bitArray.bitSlice._xor4(IV, outtext);
+      
+    }else{
+	  
+    }
+	
+	//?? drop off padding??
   }
 }
 
@@ -75,8 +105,10 @@ function Decrypt(cipherText, group) {
 // @param {String} group Group name.
 function GenerateKey(group) {
 
-  // CS255-todo: Well this needs some work...
-  var key = 'CS255-todo';
+  // generate a 128 bit array
+  var key = GetRandomValues(4);
+  key = sjcl.codec.base64.fromBits(key);
+  //keep the equals or throw out? insecure?
 
   keys[group] = key;
   SaveKeys();
@@ -653,7 +685,7 @@ function DecryptMsg(msg) {
     var displayHTML;
     try {
       var group = CurrentGroup();
-      var decryptedMsg = Decrypt(txt, group);
+      var decryptedMsg = Decrypt("RlONCseqr7E6Gsc8gwyutg==", group);
       decryptedMsg = escapeHtml(decryptedMsg);
       displayHTML = '<font color="#00AA00">Decrypted message: ' + decryptedMsg + '</font><br><hr>' + txt;
     }
