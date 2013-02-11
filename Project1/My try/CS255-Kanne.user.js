@@ -50,7 +50,8 @@ function Encrypt(plainText, group) {
 }
 
 function GetIV(cipherText){
-	//stuff here depending on how Hung implemented
+	//stuff here depending on how Hung implemented putting the IV in the CT
+	return [0,0,0,0]; 
 }
 
 // Return the decryption of the message for the given group, in the form of a string.
@@ -61,6 +62,7 @@ function GetIV(cipherText){
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
   //Thow error if not properly encrypted  
+	console.log("called");
 	  
   //get key for group from table
   LoadKeys();  
@@ -69,47 +71,60 @@ function Decrypt(cipherText, group) {
 	return cipherText; 
   }
   var key = keys[group];
-  console.log(key);
-  //var IV = GetIV(cipherText); 
+  //console.log(key);
+  key = sjcl.codec.base64.toBits(key);
+  var IV = GetIV(cipherText); 
   //console.log(IV);
   var CT = sjcl.codec.base64.toBits(cipherText);
   var len = sjcl.bitArray.bitLength(CT);
-  console.log(len);
+  //console.log(len);
   var cipher = new sjcl.cipher.aes(key);
+  var lastCT;
+  var slice;
+  var outtext="hi";
+  console.log(outtext);
+  
 
   //starting from end of CT, take 128bits
-  for(var i=len; i>0; i-128){
-    /* @param {bitArray a} The array to slice.
-	* @param {Number} bstart The offset to the start of the slice, in bits.
-	* @param {Number} bend The offset to the end of the slice, in bits.  If this is undefined,
-	* slice until the end of the array.
-	* @return {bitArray} The requested slice.
-    */
-	var slice = sjcl.bitArray.bitSlice(CT, i-128, i);
+  for(var i=0; i<len; i+=128){
+	console.log(i);
+	console.log(outtext+"ya");
+  
+	slice = sjcl.bitArray.bitSlice(CT, i-128, i);	
     //apply decryption using (key)
-    var outtext = cipher.decrypt(slice);
-    if(i == len){
+    slice = cipher.decrypt(slice);
+	console.log(slice);
+  
+    if(i == 0){
 	  //xor the result and the IV
-      outtext = sjcl.bitArray.bitSlice._xor4(IV, outtext);
-      
+      slice = sjcl.bitArray._xor4(IV, slice);
     }else{
-	  
+	  slice = sjcl.bitArray._xor4(lastCT, slice);
     }
+	console.log(outtext+" me");
+    
+    lastCT = slice;
+	try{
+		slice = sjcl.codec.utf8String.fromBits(slice);
+	}catch(e){
+		alert(e);
+	}
+  	console.log(outtext+" you");
 	
+    outtext = outtext + slice;
+  	console.log(outtext+" last");
 	//?? drop off padding??
   }
+  console.log(outtext);
+  return outtext;
 }
 
 // Generate a new key for the given group.
 //
 // @param {String} group Group name.
 function GenerateKey(group) {
-
-  // generate a 128 bit array
   var key = GetRandomValues(4);
   key = sjcl.codec.base64.fromBits(key);
-  //keep the equals or throw out? insecure?
-
   keys[group] = key;
   SaveKeys();
 }
