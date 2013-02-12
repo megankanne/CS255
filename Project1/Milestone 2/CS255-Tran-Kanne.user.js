@@ -42,10 +42,13 @@ function Encrypt(plainText, group) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    // encrypt, add tag.
+    /* encrypt, add cipher tag. */
     var key = sjcl.codec.base64.toBits(keys[group]);
     var ctext = encrypttext(plainText, key);
-    return 'aes:' + ctext;
+	var mactext = encrypttext(ctext, mackey1); //make sure this pads correctly; just don't pad or do the 1000 pad 
+	var tag = generatemac(mactext, mackey2);
+	console.log(tag);
+    return 'aes:' + tag + ctext; //prepend so that padding still works? and know length of tag = 128
   }
 
 }
@@ -58,9 +61,20 @@ function Encrypt(plainText, group) {
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
   if (cipherText.indexOf('aes:') == 0) {
-    // decrypt, ignore the tag.
+    /* decrypt, ignore the cipher tag. */
     var key = sjcl.codec.base64.toBits(keys[group]);
-    var decrypt_text = decrypttext(cipherText.substring(4), key);
+	/* Remove tag */
+	cipherText = cipherText.substring(4);
+	var cipherBlock = sjcl.codec.base64.toBits(cipherText);
+	/* grab the mac tag */
+	var tag = sjcl.bitArray.bitSlice(cipherBlock, 0, 128); 
+	/* remove mac from CT */
+	cipherBlock = sjcl.bitArray.bitSlice(cipherBlock, 128, sjcl.bitArray.bitLength(cipherBlock));
+	if(!validatemac(cipherBlock, tag, mackey1, mackey2)){
+		throw "message corrupted"
+	}
+    var decrypt_text = decrypttext(cipherBlock, key);
+	
     return decrypt_text;
   } else {
     throw "not encrypted";
@@ -104,7 +118,7 @@ function decrypttext (text, key) {
   var xortext = 0; 
   var dtext = Array();
   var cipher = new sjcl.cipher.aes(key);
-  var textblock = sjcl.codec.base64.toBits(text);
+  var textblock = text;
 
   for (var i = 4; i <= textblock.length-4; i = i + 4) {
     /* Current block */
@@ -121,6 +135,32 @@ function decrypttext (text, key) {
   var extra_bytes = dtext.charCodeAt(dtext.length-1);
   dtext = dtext.substring(0, dtext.length-extra_bytes);
   return dtext;
+}
+
+function generatemac(macText, mackey2){
+	var cipher = new sjcl.cipher.aes(mackey2);
+	var macblock = sjcl.codec.base64.toBits(macText);
+	var size = sjcl.bitArray.bitLength(macblock);
+	/* Grab last block of macblock */
+	macblock = sjcl.bitArray.bitSlice(macblock, (size-128), size);
+	/* Encrypt using mackey2 */
+	var tag = cipher.encrypt(macblock);
+	console.log(tag.length); 
+	return sjcl.codec.base64.fromBits(tag);
+}
+
+function validatemac(cipherText, receivedtag, mackey1, mackey2){
+	/* To base64 for encryption function */
+	var ctext = sjcl.codec.base64.fromBits(cipherText);
+	/* Encrypt CT with mackey1 */
+	var mactext = encrypttext(ctext, mackey1);
+	/* Generate tag using result and mackey2 */
+	var newtag = generatemac(mactext, mackey2);
+	/* Compare two tags. We use sjcl.bitArray.equal because it 
+	 * goes through each bit for comparison and does it in a predictable 
+	 * amount of time to guard against timing attacks.
+	 */
+	return sjcl.bitArray.equal(receivedtag, newtag);
 }
 
 // Generate a new key for the given group.
