@@ -38,7 +38,7 @@ var keys = {}; // association map of keys: group -> key
 // @return {String} Encryption of the plaintext, encoded as a string.
 function Encrypt(plainText, group) {
   // CS255-todo: encrypt the plainText, using key for the group.
-  if ((plainText.indexOf('aes:') == 0) || (plainText.length < 1)) {
+  if ((plainText.indexOf('aes:') == 0) || (plainText.length < 0)) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
@@ -172,6 +172,10 @@ function generatemac(macText, mackey1, mackey2){
 function validatemac(cipherText, receivedtag, mackey1, mackey2){
 	/* To base64 for encryption function */
 	var ctext = sjcl.codec.base64.fromBits(cipherText);
+  if (sjcl.bitArray.bitLength(ctext) % 128 != 0) {
+    alert("MAC is corrupted");
+    return false;
+  }
 	/* Generate tag using result, mackey1  and mackey2 */
 	var newtag = sjcl.codec.base64.toBits(generatemac(ctext, mackey1, mackey2));
   console.log("Reveive tag convert = " + sjcl.codec.base64.fromBits(receivedtag));
@@ -281,7 +285,7 @@ function LoadKeys() {
       var mackey2 = sjcl.bitArray.bitSlice(masterkey, 128*2, 128*3);
 
       /* Initialize the database */
-      var json = encrypttext('{"test_string":"correct_password"}', key);
+      var json = encrypttext('6+"test_string":"correct_password"}', key);
       /* Generate MAC tag */
       var tag = sjcl.codec.base64.toBits(generatemac(json, mackey1, mackey2));
       /* Concatenate tag and db and output the base 64 string */
