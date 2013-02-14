@@ -182,8 +182,8 @@ function validatemac(cipherText, receivedtag, mackey1, mackey2){
 	 * goes through each bit for comparison and does it in a predictable 
 	 * amount of time to guard against timing attacks.
 	 */
-  return sjcl.bitArray.equal(receivedtag, newtag);
-}
+   return sjcl.bitArray.equal(receivedtag, newtag);
+ }
 
 // Generate a new key for the given group.
 //
@@ -202,20 +202,19 @@ function GenerateKey(group) {
 
 // Take the current group keys, and save them to disk.
 function SaveKeys() {
-  var password_stored = sjcl.codec.base64.toBits(sessionStorage.getItem('current-key-' + my_username));
-  
+  var password_stored = sessionStorage.getItem('current-key-' + my_username);
+  /* Get master key stored */
+  var masterkey = sjcl.codec.base64.toBits(password_stored);
   /* Broke down the master key into encrypt key and 2 mac keys */
-  var key = sjcl.bitArray.bitSlice(password_stored, 0, 128);
-  var mackey1 = sjcl.bitArray.bitSlice(password_stored, 128, 128*2);
-  var mackey2 = sjcl.bitArray.bitSlice(password_stored, 128*2, 128*3);
-
+  var key = sjcl.bitArray.bitSlice(masterkey, 0, 128);
+  var mackey1 = sjcl.bitArray.bitSlice(masterkey, 128, 128*2);
+  var mackey2 = sjcl.bitArray.bitSlice(masterkey, 128*2, 128*3);
   /* Encrypt the keys*/
   var keyblock = sjcl.codec.base64.toBits(encrypttext(JSON.stringify(keys), key));
   /* Generate MAC tag */
   var tag = sjcl.codec.base64.toBits(generatemac(sjcl.codec.base64.fromBits(keyblock), mackey1, mackey2));
   /* Concatenate tag and db and output the base 64 string */
-  var key_str = sjcl.codec.base64.fromBits(sjcl.bitArray.concat(tag, json));
-
+  var key_str = sjcl.codec.base64.fromBits(sjcl.bitArray.concat(tag, keyblock));
   /* Save keys */
   cs255.localStorage.setItem('facebook-keys-' + my_username, key_str);
 }
@@ -223,10 +222,6 @@ function SaveKeys() {
 // Load the group keys from disk.
 function LoadKeys() {
   var password_stored = sessionStorage.getItem('current-key-' + my_username);
-  var key;
-  var mackey1;
-  var mackey2;
-  var tag;
 
   /* If the session is already exists don't ask the user again */
   if (!password_stored) {
@@ -239,25 +234,24 @@ function LoadKeys() {
       /* Get the salt of the password */
       var salt = cs255.localStorage.getItem('facebook-salt-' + my_username);
 
-      /* Generate the master key from the password given by the user */
+      /* Generate the key from the password given by the user */
       var generated_key = sjcl.misc.pbkdf2(password, salt, null, 384, null);
-	  /* Broke down the master key into encrypt key and 2 mac keys */
-	  key = sjcl.bitArray.bitSlice(generated_key, 0, 128);
-      mackey1 = sjcl.bitArray.bitSlice(generated_key, 128, 128*2);
-      mackey2 = sjcl.bitArray.bitSlice(generated_key, 128*2, 128*3);
-
-	  /* Verify database */
-	  var keysblock = sjcl.codec.base64.toBits(saved);
-	  /* grab the mac tag */
-      tag = sjcl.bitArray.bitSlice(keysblock, 0, 128); 
+      /* Broke down the master key into encrypt key and 2 mac keys */
+      var key = sjcl.bitArray.bitSlice(generated_key, 0, 128);
+      var mackey1 = sjcl.bitArray.bitSlice(generated_key, 128, 128*2);
+      var mackey2 = sjcl.bitArray.bitSlice(generated_key, 128*2, 128*3);
+      /* Verify database */
+      var keysblock = sjcl.codec.base64.toBits(saved);
+      /* grab the mac tag */
+      var tag = sjcl.bitArray.bitSlice(keysblock, 0, 128); 
       /* remove tag from database */
-      keysblock = sjcl.bitArray.bitSlice(keysblock, 128, sjcl.bitArray.bitLength(keysblock));
+      var keysblock = sjcl.bitArray.bitSlice(keysblock, 128, sjcl.bitArray.bitLength(keysblock));
       if(!validatemac(keysblock, tag, mackey1, mackey2)){
-      	throw "database corrupted";
+        alert("Key database corrupted");
       }
 
-	  /* Decrypt keys */
-      var decrypted_keys = JSON.parse(decrypttext(sjcl.codec.base64.fromBits(keysblock), key));
+      /* Decrypt keys */
+      var decrypted_keys = JSON.parse(decrypttext(sjcl.codec.base64.fromBits(keysblock),key));
 
       if ("test_string" in decrypted_keys && decrypted_keys["test_string"] == "correct_password") {
         alert("Correct password:");
@@ -276,33 +270,50 @@ function LoadKeys() {
       var salt = sjcl.codec.base64.fromBits(GetRandomValues(4));
       cs255.localStorage.setItem('facebook-salt-' + my_username, salt);
 
+      /* To do store the key as a secure hash */
+      var key = sjcl.misc.pbkdf2(password, salt, null, 384, null);
+      
       /* Generate master key has from password */
       var masterkey = sjcl.misc.pbkdf2(password, salt, null, 384, null);
-	  
-	  /* Broke down the master key into encrypt key and 2 mac keys */
-	  key = sjcl.bitArray.bitSlice(masterkey, 0, 128);
-      mackey1 = sjcl.bitArray.bitSlice(masterkey, 128, 128*2);
-      mackey2 = sjcl.bitArray.bitSlice(masterkey, 128*2, 128*3);
+      /* Broke down the master key into encrypt key and 2 mac keys */
+      var key = sjcl.bitArray.bitSlice(masterkey, 0, 128);
+      var mackey1 = sjcl.bitArray.bitSlice(masterkey, 128, 128*2);
+      var mackey2 = sjcl.bitArray.bitSlice(masterkey, 128*2, 128*3);
 
-      /* Initialize the database. Encrypt database with key. */
-      var json = sjcl.codec.base64.toBits(encrypttext('{"test_string":"correct_password"}', key));
+      /* Initialize the database */
+      var json = encrypttext('{"test_string":"correct_password"}', key);
       /* Generate MAC tag */
-      tag = sjcl.codec.base64.toBits(generatemac(sjcl.codec.base64.fromBits(json), mackey1, mackey2));
-	  /* Concatenate tag and db and output the base 64 string */
-      var finaljson = sjcl.codec.base64.fromBits(sjcl.bitArray.concat(tag, json));
-
+      var tag = sjcl.codec.base64.toBits(generatemac(json, mackey1, mackey2));
+      /* Concatenate tag and db and output the base 64 string */
+      var finaljson = sjcl.codec.base64.fromBits(sjcl.bitArray.concat(tag, sjcl.codec.base64.toBits(json)));
+      
       cs255.localStorage.setItem('facebook-keys-' + my_username, finaljson);
 
-      json = decrypttext(sjcl.codec.base64.fromBits(json), key);    
+      json = decrypttext(json,key)    
       keys = JSON.parse(json);
 
       sessionStorage.setItem('current-key-' + my_username, sjcl.codec.base64.fromBits(masterkey));
     }
   } else {
-    alert("Session storage exists");
-    /* Hung do we need to verify here again or do we only get here if we've already verified above? */
-    keys = JSON.parse(decrypttext(cs255.localStorage.getItem('facebook-keys-' + my_username),sjcl.codec.base64.toBits(password_stored)));
-    
+    /* Get master key stored */
+    var masterkey = sjcl.codec.base64.toBits(password_stored);
+    /* Broke down the master key into encrypt key and 2 mac keys */
+    var key = sjcl.bitArray.bitSlice(masterkey, 0, 128);
+    var mackey1 = sjcl.bitArray.bitSlice(masterkey, 128, 128*2);
+    var mackey2 = sjcl.bitArray.bitSlice(masterkey, 128*2, 128*3);
+    var key_stored = sjcl.codec.base64.toBits(cs255.localStorage.getItem('facebook-keys-' + my_username));
+    /* grab the mac tag */
+    var tag = sjcl.bitArray.bitSlice(key_stored, 0, 128); 
+    console.log(tag);
+    /* remove mac from CT */
+    key_stored = sjcl.bitArray.bitSlice(key_stored, 128, sjcl.bitArray.bitLength(key_stored));
+    /* Validate the key database's integrity */
+    if(!validatemac(key_stored, tag, mackey1, mackey2)){
+      alert("Key database corrupted");
+    } else {
+      alert("Session storage exists");
+      keys = JSON.parse(decrypttext(sjcl.codec.base64.fromBits(key_stored), key));
+    }
   } 
 }
 
