@@ -113,10 +113,10 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 
 	// You may find it useful to work from the comment skeleton below.
 
-        /*
 	final String keyStoreFile = System.getProperty(JSSEConstants.KEYSTORE_PROPERTY);
 	final char[] keyStorePassword = System.getProperty(JSSEConstants.KEYSTORE_PASSWORD_PROPERTY, "").toCharArray();
 	final String keyStoreType = System.getProperty(JSSEConstants.KEYSTORE_TYPE_PROPERTY, "jks");
+	
 	// The "alias" is the name of the key pair in our keystore. (default: "mykey")
 	String alias = System.getProperty(JSSEConstants.KEYSTORE_ALIAS_PROPERTY);
 
@@ -132,7 +132,7 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 	}
 
 	// Get our key pair and our own DN (not the remote server's DN) from the keystore.
-	PrivateKey privateKey = // . . .
+	PrivateKey privateKey = keyStore.getKey(); //get private key
 	iaik.x509.X509Certificate certificate = new iaik.x509.X509Certificate(keyStore.getCertificate(alias).getEncoded());
 	PublicKey publicKey = // . . .
 	Principal ourDN = // . . .
@@ -159,7 +159,6 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 	m_clientSocketFactory = // . . .
 	m_serverSocketFactory = // . . .
 
-	*/
     }
 
     public final ServerSocket createServerSocket(String localHost,

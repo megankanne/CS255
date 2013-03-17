@@ -152,14 +152,14 @@ public class HTTPSProxyEngine extends ProxyEngine
 			continue;
 		    }
 
-		    // TODO(cs255): get the remote server's Distinguished Name (DN) and serial number from its actual certificate,
+		    // 	 Get the remote server's Distinguished Name (DN) and serial number from its actual certificate,
 		    //   so that we can copy those values in the certificate that we forge.
 		    //   (Recall that we, as a MITM, obtain the server's actual certificate from our own session as a client
-		    //    to that server.)
-		    javax.security.cert.X509Certificate[] serverCertChain = null;
-		    iaik.x509.X509Certificate serverCertificate = null;
-		    Principal serverDN = null;
-		    BigInteger serverSerialNumber = null;
+		    //   to that server.)
+		    javax.security.cert.X509Certificate[] serverCertChain = session.getPeerCertificateChain();
+		    iaik.x509.X509Certificate serverCertificate = new iaik.x509.X509Certificate(serverCertChain[0].getEncoded());
+		    Principal serverDN = serverCertificate.getSubjectDN();
+		    BigInteger serverSerialNumber = serverCertificate.getSerialNumber();
 
 
 		    //We've already opened the socket, so might as well keep using it:
