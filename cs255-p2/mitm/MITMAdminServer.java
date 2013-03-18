@@ -10,6 +10,11 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.regex.*;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+
+
 class MITMAdminServer implements Runnable
 {
     private ServerSocket m_serverSocket;
@@ -17,10 +22,10 @@ class MITMAdminServer implements Runnable
     private HTTPSProxyEngine m_engine;
     
     public MITMAdminServer( String localHost, int adminPort, HTTPSProxyEngine engine ) throws IOException,GeneralSecurityException {
-	MITMSSLSocketFactory socketFactory = new MITMSSLSocketFactory();
+		MITMSSLSocketFactory socketFactory = new MITMSSLSocketFactory();
 				
-	m_serverSocket = socketFactory.createServerSocket( localHost, adminPort, 0 );
-	m_engine = engine;
+		m_serverSocket = socketFactory.createServerSocket( localHost, adminPort, 0 );
+		m_engine = engine;
     }
 
     public void run() {
@@ -52,40 +57,71 @@ class MITMAdminServer implements Runnable
 		if (userPwdMatcher.find()) {
 		    String password = userPwdMatcher.group(1);
 
-		    // TODO(cs255): authenticate the user
+		    /* Authenticate the user.			
+			 * Read hash from pwdFile and use BCrypt lib function
+			 * to determine if input password is correct.
+			 */
+			BufferedReader br = null;
+			String storedhash = "";
 
-		    boolean authenticated = true;
+			try {
+				br = new BufferedReader(new FileReader("pwdFile"));
+				storedhash = br.readLine();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			boolean authenticated;
+			if (BCrypt.checkpw(password, storedhash)){
+				System.out.println("It matches");
+				authenticated = true; 
+			}else{
+				System.out.println("It does not match");
+				authenticated = false; 
+			}
+
 
 		    // if authenticated, do the command
 		    if( authenticated ) {
-			String command = userPwdMatcher.group(2);
-			String commonName = userPwdMatcher.group(3);
+				String command = userPwdMatcher.group(2);
+				String commonName = userPwdMatcher.group(3);
 
-			doCommand( command );
-		    }
+				doCommand( command );
+		    }else{
+				sendString("Incorrect password. Please try again.");
+				m_socket.close();
+			}
 		}	
 	    }
 	    catch( InterruptedIOException e ) {
 	    }
 	    catch( Exception e ) {
-		e.printStackTrace();
+			e.printStackTrace();
 	    }
 	}
     }
 
     private void sendString(final String str) throws IOException {
-	PrintWriter writer = new PrintWriter( m_socket.getOutputStream() );
-	writer.println(str);
-	writer.flush();
+		PrintWriter writer = new PrintWriter( m_socket.getOutputStream() );
+		writer.println(str);
+		writer.flush();
     }
     
     private void doCommand( String cmd ) throws IOException {
 
-	// TODO(cs255): instead of greeting admin client, run the indicated command
+		// TODO(cs255): instead of greeting admin client, run the indicated command
+		
+		if(cmd.equals("shutdown")){
+			sendString("Shutting down...");
+			System.exit(0);			
+		}else if(cmd.equals("stats")){
+			int cons = m_engine.getNumConnectRequests();
+			sendString("CONNECT requests: "+cons);
+		}else {
+			sendString("Cmd not correct");
+		}
 
-	sendString("How are you Admin Client !!");
-
-	m_socket.close();
+		m_socket.close();
 	
     }
 

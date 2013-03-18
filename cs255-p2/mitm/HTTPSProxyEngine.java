@@ -50,6 +50,8 @@ public class HTTPSProxyEngine extends ProxyEngine
 
     public static final String ACCEPT_TIMEOUT_MESSAGE = "Listen time out";
 
+	private int numConnectRequests = 0;
+
     private String m_tempRemoteHost;
     private int m_tempRemotePort;
 
@@ -92,6 +94,13 @@ public class HTTPSProxyEngine extends ProxyEngine
 	m_proxySSLEngine = new ProxySSLEngine(sslSocketFactory, requestFilter, responseFilter);
 
     }
+
+	/* Method to get the number of connection requests.
+	 * For Admin Server. Returns numConnectRequests.
+	 */
+	public int getNumConnectRequests(){
+		return numConnectRequests;
+	}
 
     public void run()
     {
@@ -136,20 +145,21 @@ public class HTTPSProxyEngine extends ProxyEngine
 		    final String target = remoteHost + ":" + remotePort;
 
 		    System.err.println("******* Establishing a new HTTPS proxy connection to " + target);
+			numConnectRequests++;
 
 		    m_tempRemoteHost = remoteHost;
 		    m_tempRemotePort = remotePort;
 
 		    SSLSocket remoteSocket = null;
 		    try {
-			//Lookup the "common name" field of the certificate from the remote server:
-			remoteSocket = (SSLSocket)
+				//Lookup the "common name" field of the certificate from the remote server:
+				remoteSocket = (SSLSocket)
 			    m_proxySSLEngine.getSocketFactory().createClientSocket(remoteHost, remotePort);
 		    } catch (IOException ioe) {
-			ioe.printStackTrace();
-			// Try to be nice and send a reasonable error message to client
-			sendClientResponse(localSocket.getOutputStream(),"504 Gateway Timeout",remoteHost,remotePort);
-			continue;
+				ioe.printStackTrace();
+				// Try to be nice and send a reasonable error message to client
+				sendClientResponse(localSocket.getOutputStream(),"504 Gateway Timeout",remoteHost,remotePort);
+				continue;
 		    }
 		
 			// Gets the SSLSession for the remote socket 
@@ -222,14 +232,14 @@ public class HTTPSProxyEngine extends ProxyEngine
     }
 
     private void sendClientResponse(OutputStream out, String msg, String remoteHost, int remotePort) throws IOException {
-	final StringBuffer response = new StringBuffer();
-	response.append("HTTP/1.0 ").append(msg).append("\r\n");
-	response.append("Host: " + remoteHost + ":" +
-			remotePort + "\r\n");
-	response.append("Proxy-agent: CS255-MITMProxy/1.0\r\n");
-	response.append("\r\n");
-	out.write(response.toString().getBytes());
-	out.flush();
+		final StringBuffer response = new StringBuffer();
+		response.append("HTTP/1.0 ").append(msg).append("\r\n");
+		response.append("Host: " + remoteHost + ":" +
+				remotePort + "\r\n");
+		response.append("Proxy-agent: CS255-MITMProxy/1.0\r\n");
+		response.append("\r\n");
+		out.write(response.toString().getBytes());
+		out.flush();
     }
 
     /*
