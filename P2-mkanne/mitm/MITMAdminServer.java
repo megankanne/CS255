@@ -56,7 +56,7 @@ class MITMAdminServer implements Runnable
 		// parse username and pwd
 		if (userPwdMatcher.find()) {
 		    String password = userPwdMatcher.group(1);
-
+		
 		    /* Authenticate the user.			
 			 * Read hash from pwdFile and use BCrypt lib function
 			 * to determine if input password is correct.
@@ -73,10 +73,8 @@ class MITMAdminServer implements Runnable
 			
 			boolean authenticated;
 			if (BCrypt.checkpw(password, storedhash)){
-				System.out.println("It matches");
 				authenticated = true; 
 			}else{
-				System.out.println("It does not match");
 				authenticated = false; 
 			}
 
@@ -108,8 +106,6 @@ class MITMAdminServer implements Runnable
     }
     
     private void doCommand( String cmd ) throws IOException {
-
-		// TODO(cs255): instead of greeting admin client, run the indicated command
 		
 		if(cmd.equals("shutdown")){
 			sendString("Shutting down...");
@@ -118,11 +114,10 @@ class MITMAdminServer implements Runnable
 			int cons = m_engine.getNumConnectRequests();
 			sendString("CONNECT requests: "+cons);
 		}else {
-			sendString("Cmd not correct");
+			sendString("-cmd must be 'stats' or 'shutdown'");
 		}
 
-		m_socket.close();
-	
+		m_socket.close();	
     }
 
 }

@@ -113,9 +113,7 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 		final String keyStoreType = System.getProperty(JSSEConstants.KEYSTORE_TYPE_PROPERTY, "jks");
 	
 		// The "alias" is the name of the key pair in our keystore. (default: "mykey")
-		String alias = System.getProperty(JSSEConstants.KEYSTORE_ALIAS_PROPERTY);
-		//System.out.printf("%s\n", alias);
-		
+		String alias = System.getProperty(JSSEConstants.KEYSTORE_ALIAS_PROPERTY);		
 
 		final KeyStore keyStore;
 	
@@ -154,10 +152,8 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 		GregorianCalendar start = (GregorianCalendar) Calendar.getInstance(); //Get date
 		start.set(2012, 11, 1, 0, 0, 1);
 		serverCertificate.setValidNotBefore(start.getTime()); //Set before time
-		//System.out.printf("%s\n\n", start.toString());
 		GregorianCalendar end = (GregorianCalendar) Calendar.getInstance(); //Get date
 		end.set(2013, 6, 1, 0, 0, 1);
-		//System.out.printf("%s\n", end.toString());
 		serverCertificate.setValidNotAfter(end.getTime()); //Set after time
 		
 		/* Use signing algorithm to sign the certificate */
@@ -168,7 +164,6 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 		serverKeyStore.load(null, keyStorePassword);
 		String str = "";
 		char[] emptyPassword = str.toCharArray();
-		//System.out.printf("%s\n", str);
 		
 		/* Create a new certificate chain with the forged certificate 
 		 * and set the key entry in the server keystore to include the chain.
